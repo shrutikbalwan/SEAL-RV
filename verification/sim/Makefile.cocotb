@@ -1,0 +1,5 @@
+TOPLEVEL_LANG = verilog
+VERILOG_SOURCES = $(PWD)/../../hw/rtl/cpu/cpu_core.sv $(PWD)/../../hw/rtl/cpu/alu.sv $(PWD)/../../hw/rtl/cpu/regfile.sv
+TOPLEVEL = cpu_core
+MODULE = test_cpu
+include $(shell cocotb-config --makefiles)/Makefile.sim
