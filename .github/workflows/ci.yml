@@ -1,0 +1,22 @@
+name: VLSI CI Environment
+
+on: [push, pull_request]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install VLSI Tools (Icarus Verilog & Yosys)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y iverilog yosys gtkwave make
+
+    - name: Run Icarus Verilog Simulation
+      run: make sim
+
+    - name: Run Yosys Synthesis
+      run: make synth
