@@ -1,15 +1,10 @@
-#!/bin/bash
-echo "=== SEAL-RV Verification Regression ==="
-mkdir -p ../waves
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "--- Running SystemVerilog Directed Tests ---"
-iverilog -g2012 -o cpu_tb_sim ../tb/cpu_tb.sv ../../hw/rtl/cpu/*.sv
-vvp cpu_tb_sim -lxt2
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$repo_root"
 
-echo "--- Running Cocotb Randomized Tests ---"
-export MODULE=test_cpu
-export TOPLEVEL=cpu_core
-export COCOTB_REDUCED_LOG_FMT=1
-make -f Makefile.cocotb
-
-echo "=== Regression Complete ==="
+make sim
+make test-cocotb
+make lint
+make synth

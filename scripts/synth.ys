@@ -1,0 +1,12 @@
+read_verilog -sv hw/rtl/counter.sv
+hierarchy -check -top counter
+synth -top counter
+stat
+write_verilog -noattr build/counter_synth.v
+
+design -reset
+read_verilog -sv hw/rtl/cpu/alu.sv hw/rtl/cpu/regfile.sv hw/rtl/cpu/rvc_decompress.sv hw/rtl/cpu/cpu_core.sv
+hierarchy -check -top cpu_core
+synth -top cpu_core
+stat
+write_verilog -noattr build/cpu_core_synth.v

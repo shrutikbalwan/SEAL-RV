@@ -1,0 +1,8 @@
+/build/
+/sim_build/
+/counter_sim
+/cpu_tb_sim
+/verification_cpu_sim
+*.vcd
+__pycache__/
+verification/tests/results.xml

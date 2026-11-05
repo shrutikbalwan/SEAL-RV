@@ -1,29 +1,24 @@
-# PHASE_01_ENVIRONMENT
-## VLSI Development Environment Setup
+# Phase 01 — RTL Development Environment
 
-### Operating System
-* Ubuntu Linux (via GitHub Actions `ubuntu-latest` runner).
+## Supported CI environment
 
-### Tools Installed
-* **Icarus Verilog** (iverilog): Standard open-source RTL simulator.
-* **Yosys**: Open-source synthesis suite.
-* **GTKWave**: Waveform viewer.
-* **Make**: Automation.
+GitHub Actions uses Ubuntu and installs Icarus Verilog, Yosys, Verilator, and GNU Make. Python 3 and Cocotb are installed for CPU co-simulation. The workflow runs counter and CPU SystemVerilog tests, Cocotb CPU tests, lint, and synthesis smoke checks.
 
-### Installation Commands (Ubuntu/Debian)
-```bash
-sudo apt-get update
-sudo apt-get install -y iverilog yosys gtkwave make
+## Local commands
+
+```sh
+make sim
+make test-cocotb
+make lint
+make synth
 ```
 
-### Verification Commands
-```bash
-make sim   # Runs iverilog and vvp
-make synth # Runs yosys logic synthesis
-```
+## Known environment limits
 
-### Known Issues
-* None for basic RTL. Future scaling to SKY130 ASIC flow will require Docker and OpenLane images.
+During the Phase 01 audit on Windows, Icarus was usable and GNU Make was unavailable on `PATH`. Yosys and Verilator are bundled with OSS CAD Suite; they require its runtime library path, and Verilator also requires `VERILATOR_ROOT` to point to `share/verilator`. With those variables set, the revised synthesis and lint commands completed. The baseline runs and exact commands/results are in `REPOSITORY_AUDIT.md`.
 
-### Reproducibility
-The CI pipeline in `.github/workflows/ci.yml` fully automates and reproduces this environment on every push.
+The synthesis target covers the current counter and CPU RTL only. It is a smoke check, not a SoC PPA result. SKY130 physical implementation needs a separately versioned PDK and OpenLane/OpenROAD flow plus actual physical verification.
+
+## Reproducibility
+
+CI runs the same make targets on pushes and pull requests and propagates failing commands. Cocotb is pinned to 2.1.0; operating-system RTL tool packages still follow the Ubuntu runner package versions.

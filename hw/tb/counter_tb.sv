@@ -10,7 +10,7 @@ module counter_tb;
         $dumpfile("counter.vcd"); $dumpvars(0, counter_tb);
         rst_n = 0; en = 0; #20;
         rst_n = 1; #10; en = 1; #100; en = 0; #20;
-        if (count !== 8'd10) $error("Test failed");
+        if (count !== 8'd10) $fatal(1, "Test failed: expected count=10, got %0d", count);
         else $display("Test passed! Count = %0d", count);
         $finish;
     end

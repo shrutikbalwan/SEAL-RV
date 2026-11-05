@@ -1,5 +1,18 @@
 TOPLEVEL_LANG = verilog
-VERILOG_SOURCES = $(PWD)/../../hw/rtl/cpu/cpu_core.sv $(PWD)/../../hw/rtl/cpu/alu.sv $(PWD)/../../hw/rtl/cpu/regfile.sv
+SIM ?= icarus
 TOPLEVEL = cpu_core
-MODULE = test_cpu
+COCOTB_TEST_MODULES = test_rv32i
+COCOTB_HDL_TIMEUNIT = 1ns
+COCOTB_HDL_TIMEPRECISION = 1ps
+
+REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
+SIM_BUILD = $(REPO_ROOT)/build/cocotb
+COCOTB_RESULTS_FILE = $(SIM_BUILD)/results.xml
+PYTHONPATH := $(REPO_ROOT)/verification/cocotb:$(PYTHONPATH)
+export PYTHONPATH
+VERILOG_SOURCES = $(REPO_ROOT)/hw/rtl/cpu/alu.sv \
+                  $(REPO_ROOT)/hw/rtl/cpu/regfile.sv \
+                  $(REPO_ROOT)/hw/rtl/cpu/rvc_decompress.sv \
+                  $(REPO_ROOT)/hw/rtl/cpu/cpu_core.sv
+
 include $(shell cocotb-config --makefiles)/Makefile.sim

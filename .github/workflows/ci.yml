@@ -1,4 +1,4 @@
-name: VLSI CI Environment
+name: SEAL-RV RTL CI
 
 on: [push, pull_request]
 
@@ -7,16 +7,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install VLSI Tools (Icarus Verilog & Yosys)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y iverilog yosys gtkwave make
+      - name: Install RTL tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog yosys verilator make
 
-    - name: Run Icarus Verilog Simulation
-      run: make sim
+      - name: Install Cocotb
+        run: python3 -m pip install cocotb==2.1.0
 
-    - name: Run Yosys Synthesis
-      run: make synth
+      - name: Run counter and CPU simulations
+        run: make sim
+
+      - name: Run Cocotb CPU tests
+        run: make test-cocotb
+
+      - name: Run RTL lint
+        run: make lint
+
+      - name: Run synthesis smoke tests
+        run: make synth
