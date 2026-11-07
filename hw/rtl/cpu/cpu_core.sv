@@ -22,7 +22,8 @@ module cpu_core (
     output logic        trap_valid,
     output logic [31:0] trap_pc,
     output logic [31:0] trap_cause,
-    output logic [31:0] trap_value
+    output logic [31:0] trap_value,
+    output logic        retire
 );
     localparam logic [6:0] OPCODE_LOAD   = 7'b0000011;
     localparam logic [6:0] OPCODE_MISC   = 7'b0001111;
@@ -319,6 +320,11 @@ module cpu_core (
         dmem_valid=(state==ST_MEM); dmem_write=mem_is_store; dmem_addr=mem_aligned_addr;
         dmem_wdata=mem_write_data; dmem_wstrb=mem_write_strobe;
     end
+    // One-cycle architectural retirement pulse for observability/performance
+    // counters. Memory instructions retire only when their bus operation ends.
+    assign retire = rst_n && !trap_take &&
+                    ((state==ST_EXEC && dec_legal && !dec_exception && !dec_is_load && !dec_is_store) ||
+                     (state==ST_MEM && dmem_ready && !dmem_error));
 
     always_comb begin
         trap_take = 1'b0;

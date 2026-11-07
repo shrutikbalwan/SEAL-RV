@@ -1,6 +1,6 @@
 # Reset and Clock Specification
 
-This is the proposed system policy. Current RTL has an asynchronous active-low reset on the PC only; the register file has no reset and there is no system clock controller.
+This is the system policy. Peripheral power-control RTL exposes sleep, wake, clock-enable, and software-reset requests. It does not gate the shared clock; reset requests must be consumed by a system reset controller.
 
 ## Reset
 
@@ -22,4 +22,4 @@ This is the proposed system policy. Current RTL has an asynchronous active-low r
 
 ## Existing implementation difference
 
-The current `cpu_core` uses `always_ff @(posedge clk or negedge rst_n)` for PC reset, so its PC reset is asynchronous assertion, active-low. The register file state is unreset. This is the observed RTL baseline, not full-system behavior.
+The current `cpu_core` uses `always_ff @(posedge clk or negedge rst_n)` for PC reset, so its PC reset is asynchronous assertion, active-low. The register file state is unreset. Peripheral reset is asynchronous active-low. Clock-enable outputs are requests only; no clock is gated in the Phase 06 peripheral subsystem. This is the RTL baseline, not a completed physical reset/clock implementation.
