@@ -20,7 +20,7 @@ module cpu_tb;
         .dmem_addr(dmem_addr), .dmem_wdata(dmem_wdata), .dmem_wstrb(dmem_wstrb),
         .dmem_ready(dmem_ready), .dmem_rdata(dmem_rdata), .dmem_error(dmem_error),
         .trap_valid(trap_valid), .trap_pc(trap_pc),
-        .trap_cause(trap_cause), .trap_value(trap_value)
+        .trap_cause(trap_cause), .trap_value(trap_value), .retire()
     );
 
     initial begin

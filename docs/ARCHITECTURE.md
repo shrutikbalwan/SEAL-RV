@@ -2,7 +2,7 @@
 
 ## Status and design decisions
 
-This document describes the target SoC architecture. The Phase 02 RV32I core and counter are implemented; the remaining diagram blocks are architectural targets and must not be inferred as implemented. Decisions marked **provisional** need review before their implementation phases.
+This document describes the target SoC architecture. The CPU, counter, Wishbone fabric, Phase 05 behavioral memory, and initial Phase 06 UART/GPIO/SPI/I2C/timer/watchdog/interrupt/debug/performance/power-request collection are implemented. Other diagram blocks remain architectural targets and must not be inferred as implemented. Decisions marked **provisional** need review before their implementation phases.
 
 ## Block diagram
 
@@ -18,7 +18,7 @@ This document describes the target SoC architecture. The Phase 02 RV32I core and
                                       debug, counters, power control
 ```
 
-The diagram indicates intended connectivity only. The final master topology and whether DMA has two independent masters or one shared master are review decisions.
+The diagram indicates intended connectivity except for implemented blocks documented in the corresponding subsystem specifications. The final master topology and whether DMA has two independent masters or one shared master are review decisions.
 
 ## CPU
 
@@ -31,7 +31,7 @@ The diagram indicates intended connectivity only. The final master topology and 
 
 **Provisional recommendation:** Wishbone B4 Classic, 32-bit address/data, byte selects, one outstanding transfer per granted master. A central decoder maps one selected target per transfer. CPU and DMA access are arbitrated; fairness and maximum wait are specified in the bus contract. The firewall checks DMA address, direction, and transfer size before target selection. PMP checks CPU accesses; bus firewall rules do not replace PMP.
 
-Targets are boot ROM, SRAM, security control/crypto, AI accelerator, and peripheral register banks. ROM and SRAM may be integrated into a shared target or separate targets, but each must preserve the memory map and fault behavior.
+Targets are boot ROM, SRAM, security control/crypto, AI accelerator, and peripheral register banks. The current [peripheral subsystem](PERIPHERAL_SUBSYSTEM.md) implements UART, GPIO, SPI/I2C masters, machine timer, interrupt controller, watchdog, performance observation counters, and software clock/power requests at their specified Wishbone pages. External debug halt/step, physical clock gating, and other peripheral targets remain future work. ROM and SRAM may be integrated into a shared target or separate targets, but each must preserve the memory map and fault behavior.
 
 ## Memory and protection
 
