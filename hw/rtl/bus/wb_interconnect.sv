@@ -14,6 +14,7 @@ module wb_interconnect #(
     input logic m1_cyc, m1_stb, m1_we,
     input logic [31:0] m1_adr, m1_dat_w,
     input logic [3:0] m1_sel,
+    input logic [1:0] m0_privilege, m1_privilege,
     output logic [31:0] m1_dat_r,
     output logic m1_ack, m1_err,
     output logic [2:0] s_cyc, s_stb, s_we,
@@ -21,7 +22,11 @@ module wb_interconnect #(
     output logic [95:0] s_dat_w,
     output logic [11:0] s_sel,
     input logic [95:0] s_dat_r,
-    input logic [2:0] s_ack, s_err
+    input logic [2:0] s_ack, s_err,
+    output logic violation_valid,
+    output logic [31:0] violation_addr,
+    output logic [2:0] violation_master,
+    output logic [31:0] violation_count
 );
     logic d_cyc, d_stb, d_we;
     logic [31:0] d_adr, d_dat_w, d_dat_r;
@@ -32,6 +37,13 @@ module wb_interconnect #(
     logic error_ack, error_err;
     logic [31:0] error_rdata;
     logic target_ack, target_err;
+    logic arb_owner;
+    logic raw_cyc, raw_stb, raw_we;
+    logic [31:0] raw_adr, raw_dat_w, raw_dat_r;
+    logic [3:0] raw_sel;
+    logic fw_ack, fw_err, fw_cyc, fw_stb, fw_we;
+    logic [31:0] fw_adr, fw_dat_w;
+    logic [3:0] fw_sel;
 
     wb_arbiter #(.TIMEOUT_CYCLES(TIMEOUT_CYCLES)) arbiter (
         .clk, .rst_n,
@@ -39,9 +51,21 @@ module wb_interconnect #(
         .m0_dat_r, .m0_ack, .m0_err,
         .m1_cyc, .m1_stb, .m1_we, .m1_adr, .m1_dat_w, .m1_sel,
         .m1_dat_r, .m1_ack, .m1_err,
-        .s_cyc(d_cyc), .s_stb(d_stb), .s_we(d_we), .s_adr(d_adr), .s_dat_w(d_dat_w), .s_sel(d_sel),
-        .s_dat_r(d_dat_r), .s_ack(d_ack), .s_err(d_err)
+        .s_cyc(raw_cyc), .s_stb(raw_stb), .s_we(raw_we), .s_adr(raw_adr), .s_dat_w(raw_dat_w), .s_sel(raw_sel),
+        .s_dat_r(raw_dat_r), .s_ack(fw_ack), .s_err(fw_err), .owner_out(arb_owner)
     );
+
+    wb_firewall firewall (
+        .clk, .rst_n, .master_id(arb_owner ? 3'd1 : 3'd0),
+        .privilege(arb_owner ? m1_privilege : m0_privilege), .cpu_execute(1'b0),
+        .m_cyc(raw_cyc), .m_stb(raw_stb), .m_we(raw_we), .m_adr(raw_adr), .m_dat_w(raw_dat_w), .m_sel(raw_sel),
+        .m_dat_r(raw_dat_r), .m_ack(fw_ack), .m_err(fw_err),
+        .s_cyc(fw_cyc), .s_stb(fw_stb), .s_we(fw_we), .s_adr(fw_adr), .s_dat_w(fw_dat_w), .s_sel(fw_sel),
+        .s_dat_r(d_dat_r), .s_ack(d_ack), .s_err(d_err),
+        .violation_valid, .violation_addr, .violation_master, .violation_count
+    );
+    assign d_cyc=fw_cyc; assign d_stb=fw_stb; assign d_we=fw_we;
+    assign d_adr=fw_adr; assign d_dat_w=fw_dat_w; assign d_sel=fw_sel;
 
     wb_address_decoder decoder (.adr(d_adr), .select(target), .unmapped);
     wb_error_slave error_target (
