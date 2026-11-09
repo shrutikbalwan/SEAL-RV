@@ -86,6 +86,51 @@ module cpu_core (
     logic signed [63:0] mul_a_signed, mul_b_signed;
     logic [63:0] mul_a_unsigned, mul_b_unsigned;
     logic [31:0] muldiv_result;
+    logic [63:0] pmpcfg_flat;
+    logic [255:0] pmpaddr_flat;
+    logic [7:0] pmp_cfg_we;
+    logic pmp_addr_we, pmp_data_deny, pmp_fetch_deny, pmp_data_allow, pmp_fetch_allow;
+    logic [2:0] pmp_addr_index;
+    logic [31:0] pmp_addr_write_data;
+    logic [4:0] pmp_data_size, pmp_fetch_size;
+    logic pmp_mem_ready, pmp_mem_error;
+    logic [7:0] pmp_cfg_unused;
+    logic [31:0] pmp_addr_unused;
+
+    assign pmp_cfg_we = (state==ST_EXEC && !pmp_fetch_deny && dec_is_csr && csr_write && !dec_exception &&
+                         (csr_addr==12'h3a0 || csr_addr==12'h3a2)) ?
+                        ((csr_addr==12'h3a0) ? 8'h0f : 8'hf0) : 8'h00;
+    assign pmp_addr_we = (state==ST_EXEC && !pmp_fetch_deny && dec_is_csr && csr_write && !dec_exception &&
+                         csr_addr>=12'h3b0 && csr_addr<=12'h3b7);
+    assign pmp_addr_index = csr_addr[2:0];
+    assign pmp_addr_write_data = csr_wdata;
+    seal_pmp pmp_regs (
+        .clk, .rst_n, .cfg_we(pmp_cfg_we), .cfg_wdata({csr_wdata,csr_wdata}),
+        .addr_we(pmp_addr_we), .addr_index(pmp_addr_index), .addr_wdata(pmp_addr_write_data),
+        .read_index(csr_addr[2:0]), .cfg_rdata(pmp_cfg_unused), .addr_rdata(pmp_addr_unused),
+        .cfg_flat(pmpcfg_flat), .addr_flat(pmpaddr_flat)
+    );
+    always_comb begin
+        case (mem_funct3)
+            3'b000,3'b100: pmp_data_size=1;
+            3'b001,3'b101: pmp_data_size=2;
+            default: pmp_data_size=4;
+        endcase
+        pmp_fetch_size=compressed ? 2 : 4;
+    end
+    pmp_checker pmp_data_check (
+        .addr(mem_aligned_addr + {30'b0,mem_lane}), .size_bytes(pmp_data_size),
+        .access_read(!mem_is_store), .access_write(mem_is_store), .access_execute(1'b0),
+        .privilege(2'b11), .cfg_flat(pmpcfg_flat), .addr_flat(pmpaddr_flat),
+        .allow(pmp_data_allow), .matched(), .matched_index()
+    );
+    pmp_checker pmp_fetch_check (
+        .addr(pc), .size_bytes(pmp_fetch_size), .access_read(1'b0), .access_write(1'b0), .access_execute(1'b1),
+        .privilege(2'b11), .cfg_flat(pmpcfg_flat), .addr_flat(pmpaddr_flat),
+        .allow(pmp_fetch_allow), .matched(), .matched_index()
+    );
+    assign pmp_data_deny = !pmp_data_allow;
+    assign pmp_fetch_deny = !pmp_fetch_allow;
 
     assign compressed_word = instr[15:0];
     assign compressed = (compressed_word[1:0] != 2'b11);
@@ -131,6 +176,10 @@ module cpu_core (
             12'h304: csr_rdata = mie;
             12'h344: begin csr_rdata = mip_value; csr_readonly = 1'b1; end
             12'h305: csr_rdata = mtvec;
+            12'h3a0: csr_rdata = pmpcfg_flat[31:0];
+            12'h3a2: csr_rdata = pmpcfg_flat[63:32];
+            12'h3b0,12'h3b1,12'h3b2,12'h3b3,12'h3b4,12'h3b5,12'h3b6,12'h3b7:
+                csr_rdata = pmpaddr_flat[csr_addr[2:0]*32 +: 32];
             12'h341: csr_rdata = mepc;
             12'h342: csr_rdata = mcause;
             12'h343: csr_rdata = mtval;
@@ -313,18 +362,21 @@ module cpu_core (
 
     always_comb begin
         rf_we=0; rf_rd=rd; rf_wdata=dec_write_data;
-        if (state==ST_EXEC && dec_legal && dec_write_rd && !dec_exception && !dec_is_load && !dec_is_store && !dec_is_mret && !dec_is_wfi) rf_we=1;
-        else if (state==ST_MEM && dmem_ready && !dmem_error && !mem_is_store) begin rf_we=1; rf_rd=mem_rd; rf_wdata=load_result; end
+        if (state==ST_EXEC && !pmp_fetch_deny && dec_legal && dec_write_rd && !dec_exception && !dec_is_load && !dec_is_store && !dec_is_mret && !dec_is_wfi) rf_we=1;
+        else if (state==ST_MEM && dmem_ready && !dmem_error && !pmp_data_deny && !mem_is_store) begin rf_we=1; rf_rd=mem_rd; rf_wdata=load_result; end
     end
     always_comb begin
-        dmem_valid=(state==ST_MEM); dmem_write=mem_is_store; dmem_addr=mem_aligned_addr;
+        dmem_valid=(state==ST_MEM) && !pmp_data_deny; dmem_write=mem_is_store; dmem_addr=mem_aligned_addr;
         dmem_wdata=mem_write_data; dmem_wstrb=mem_write_strobe;
     end
     // One-cycle architectural retirement pulse for observability/performance
     // counters. Memory instructions retire only when their bus operation ends.
     assign retire = rst_n && !trap_take &&
                     ((state==ST_EXEC && dec_legal && !dec_exception && !dec_is_load && !dec_is_store) ||
-                     (state==ST_MEM && dmem_ready && !dmem_error));
+                     (state==ST_MEM && dmem_ready && !dmem_error && !pmp_data_deny));
+
+    assign pmp_mem_ready = dmem_ready || (state==ST_MEM && pmp_data_deny);
+    assign pmp_mem_error = dmem_error || pmp_data_deny;
 
     always_comb begin
         trap_take = 1'b0;
@@ -332,12 +384,14 @@ module cpu_core (
         trap_entry_cause = 32'd0;
         trap_entry_value = 32'd0;
         trap_entry_epc = pc;
-        if (state==ST_EXEC && interrupt_pending && mstatus[3]) begin
+        if (state==ST_EXEC && pmp_fetch_deny) begin
+            trap_take=1'b1; trap_entry_cause=32'd1; trap_entry_value=pc;
+        end else if (state==ST_EXEC && interrupt_pending && mstatus[3]) begin
             trap_take=1'b1; trap_is_interrupt=1'b1; trap_entry_cause=interrupt_cause;
         end else if (state==ST_EXEC && (!dec_legal || dec_exception)) begin
             trap_take=1'b1; trap_entry_cause=dec_legal ? dec_exception_cause : 32'd2;
             trap_entry_value=dec_legal ? dec_exception_value : (compressed ? {16'b0,compressed_word} : active_instr);
-        end else if (state==ST_MEM && dmem_ready && dmem_error) begin
+        end else if (state==ST_MEM && pmp_mem_ready && pmp_mem_error) begin
             trap_take=1'b1; trap_entry_cause=mem_is_store ? 32'd7 : 32'd5;
             trap_entry_value=mem_aligned_addr+{30'b0,mem_lane}; trap_entry_epc=mem_pc;
         end else if (state==ST_SLEEP && interrupt_pending && mstatus[3]) begin
@@ -397,7 +451,7 @@ module cpu_core (
                         end
                     end
                 end
-                ST_MEM: if (dmem_ready) begin
+                ST_MEM: if (pmp_mem_ready) begin
                     pc<=mem_pc + (mem_pc_step==2 ? 32'd2 : 32'd4);
                     state<=ST_EXEC; minstret<=minstret+1'b1;
                 end
@@ -410,4 +464,11 @@ module cpu_core (
             endcase
         end
     end
+
+`ifdef FORMAL
+    default clocking pmp_cb @(posedge clk); endclocking
+    assert property (state==ST_MEM && pmp_data_deny |-> !dmem_valid);
+    assert property (state==ST_EXEC && pmp_fetch_deny |-> trap_take && trap_entry_cause==32'd1 && !rf_we);
+    assert property (state==ST_EXEC && pmp_fetch_deny |-> !(|pmp_cfg_we) && !pmp_addr_we);
+`endif
 endmodule

@@ -28,6 +28,8 @@ All addresses are byte addresses. Boot ROM and main SRAM are implemented by Phas
 - Boot ROM writes return an error. SRAM accesses outside the 32 KiB range return an error. Unmapped addresses return an error and set an observable fault cause.
 - Execute permission is denied for MMIO by default. ROM and SRAM execute permissions are governed by CPU privilege/PMP policy.
 - DMA may access SRAM and explicitly permitted memory windows only. DMA access to ROM, key-vault state, debug controls, or protected peripheral registers is denied by default.
+- SRAM `0x1000_7000`–`0x1000_7FFF` is the secure 4 KiB subregion and is accessible only to the CPU in machine mode through the bus firewall. DMA is limited to `0x1000_0000`–`0x1000_6FFF`.
+- The eight-entry CPU PMP governs instruction fetches and data accesses independently of the bus firewall. PMP does not authorize DMA or other non-CPU masters.
 - Address decode uses the complete address so high-address aliases cannot reach a valid target.
 
 DMA, crypto, AI accelerator, TRNG, and PMP/firewall register behavior remains to be implemented. Physical clock gating, debug halt/step, and external debug transport are not part of the initial Phase 06 RTL.
