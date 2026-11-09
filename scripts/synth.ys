@@ -5,21 +5,21 @@ stat
 write_verilog -noattr build/counter_synth.v
 
 design -reset
-read_verilog -sv hw/rtl/cpu/alu.sv hw/rtl/cpu/regfile.sv hw/rtl/cpu/rvc_decompress.sv hw/rtl/cpu/cpu_core.sv
+read_verilog -sv hw/rtl/security/seal_pmp.sv hw/rtl/security/pmp_checker.sv hw/rtl/cpu/alu.sv hw/rtl/cpu/regfile.sv hw/rtl/cpu/rvc_decompress.sv hw/rtl/cpu/cpu_core.sv
 hierarchy -check -top cpu_core
 synth -top cpu_core
 stat
 write_verilog -noattr build/cpu_core_synth.v
 
 design -reset
-read_verilog -sv hw/rtl/bus/wb_error_slave.sv hw/rtl/bus/wb_address_decoder.sv hw/rtl/bus/wb_arbiter.sv hw/rtl/bus/wb_interconnect.sv hw/rtl/bus/wb_cpu_adapter.sv
+read_verilog -sv hw/rtl/security/wb_firewall.sv hw/rtl/bus/wb_error_slave.sv hw/rtl/bus/wb_address_decoder.sv hw/rtl/bus/wb_arbiter.sv hw/rtl/bus/wb_interconnect.sv hw/rtl/bus/wb_cpu_adapter.sv
 hierarchy -check -top wb_interconnect
 synth -top wb_interconnect
 stat
 write_verilog -noattr build/wb_interconnect_synth.v
 
 design -reset
-read_verilog -sv hw/rtl/bus/wb_error_slave.sv hw/rtl/bus/wb_address_decoder.sv hw/rtl/bus/wb_arbiter.sv hw/rtl/bus/wb_interconnect.sv hw/rtl/bus/wb_cpu_adapter.sv
+read_verilog -sv hw/rtl/security/wb_firewall.sv hw/rtl/bus/wb_error_slave.sv hw/rtl/bus/wb_address_decoder.sv hw/rtl/bus/wb_arbiter.sv hw/rtl/bus/wb_interconnect.sv hw/rtl/bus/wb_cpu_adapter.sv
 hierarchy -check -top wb_cpu_adapter
 synth -top wb_cpu_adapter
 stat
