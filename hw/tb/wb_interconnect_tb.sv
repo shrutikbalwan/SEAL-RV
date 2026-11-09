@@ -65,7 +65,7 @@ module wb_interconnect_tb;
     wire [95:0] s_dat_r;
     wire [2:0] s_ack, s_err;
     logic stall_all;
-    integer writes_rom, writes_sram, writes_periph;
+    integer writes_rom, writes_sram, writes_periph, writes_before;
     logic [31:0] got0, got1;
 
     wb_interconnect #(.TIMEOUT_CYCLES(12)) dut (
@@ -74,6 +74,7 @@ module wb_interconnect_tb;
         .m0_dat_r(dat_r[31:0]), .m0_ack(ack[0]), .m0_err(err[0]),
         .m1_cyc(cyc[1]), .m1_stb(stb[1]), .m1_we(we[1]), .m1_adr(adr[63:32]), .m1_dat_w(dat_w[63:32]), .m1_sel(sel[7:4]),
         .m1_dat_r(dat_r[63:32]), .m1_ack(ack[1]), .m1_err(err[1]),
+        .m0_privilege(2'b11), .m1_privilege(2'b11),
         .s_cyc, .s_stb, .s_we, .s_adr, .s_dat_w, .s_sel, .s_dat_r, .s_ack, .s_err
     );
 
@@ -117,7 +118,8 @@ module wb_interconnect_tb;
         repeat(3) @(posedge clk); rst_n=1;
         repeat(2) @(posedge clk);
 
-        start(0,1,32'h0000_0008,32'h1122_3344,4'hf); finish(0,0,got0);
+        start(0,1,32'h0000_0008,32'h1122_3344,4'hf); finish(0,1,got0);
+        if (writes_rom!=0) $fatal(1,"denied ROM write reached protected target");
         start(0,1,32'h1000_0008,32'hAABB_CCDD,4'hf); finish(0,0,got0);
         start(0,1,32'h4000_0008,32'h5566_7788,4'hf); finish(0,0,got0);
         start(0,1,32'h1000_0008,32'h0000_00EE,4'b0001); finish(0,0,got0);
@@ -139,6 +141,9 @@ module wb_interconnect_tb;
             finish(1,0,got1);
         join
         if (writes_sram<4) $fatal(1,"lost or duplicated writes during contention");
+        writes_before=writes_sram;
+        start(1,1,32'h1000_7ffc,32'hDEAD_BEEF,4'hf); finish(1,1,got1);
+        if (writes_sram!=writes_before) $fatal(1,"denied DMA secure-SRAM write reached target");
         start(0,0,32'h1000_0010,0,4'hf); finish(0,0,got0);
         if (got0!==32'h1111_1111) $fatal(1,"first contending transaction lost/reordered");
         start(0,0,32'h1000_0014,0,4'hf); finish(0,0,got0);

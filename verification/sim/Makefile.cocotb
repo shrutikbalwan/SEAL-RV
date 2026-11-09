@@ -13,6 +13,8 @@ export PYTHONPATH
 VERILOG_SOURCES = $(REPO_ROOT)/hw/rtl/cpu/alu.sv \
                   $(REPO_ROOT)/hw/rtl/cpu/regfile.sv \
                   $(REPO_ROOT)/hw/rtl/cpu/rvc_decompress.sv \
+                  $(REPO_ROOT)/hw/rtl/security/seal_pmp.sv \
+                  $(REPO_ROOT)/hw/rtl/security/pmp_checker.sv \
                   $(REPO_ROOT)/hw/rtl/cpu/cpu_core.sv
 
 include $(shell cocotb-config --makefiles)/Makefile.sim

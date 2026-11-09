@@ -22,7 +22,7 @@ This specification defines the implemented Phase 04 subsystem. The RTL implement
 
 ## Arbitration and protection
 
-CPU and DMA requests are arbitrated round-robin. Locking/atomic bus cycles are out of scope while the A extension is excluded. PMP and the DMA firewall are not yet connected to this interconnect.
+CPU and DMA requests are arbitrated round-robin. Locking/atomic bus cycles are out of scope while the A extension is excluded. The post-arbitration bus firewall independently validates the granted master before target decode, returns `ERR` for denied requests, and logs the master and address. CPU PMP checks instruction fetches and data operations inside the CPU; it does not apply to DMA.
 
 ## CDC and timing
 

@@ -19,13 +19,15 @@ module wb_arbiter #(
     output logic [31:0] s_adr, s_dat_w,
     output logic [3:0]  s_sel,
     input  logic [31:0] s_dat_r,
-    input  logic        s_ack, s_err
+    input  logic        s_ack, s_err,
+    output logic        owner_out
 );
     localparam integer TIMEOUT_LIMIT = (TIMEOUT_CYCLES < 1) ? 1 : TIMEOUT_CYCLES;
     localparam integer COUNT_W = (TIMEOUT_LIMIT < 2) ? 1 : $clog2(TIMEOUT_LIMIT + 1);
     logic busy, owner, next_owner;
     logic [COUNT_W-1:0] wait_count;
     logic timeout;
+    assign owner_out = owner;
     assign s_cyc = busy && (owner ? m1_cyc : m0_cyc);
     assign s_stb = busy && (owner ? m1_stb : m0_stb);
     assign s_we = busy && (owner ? m1_we : m0_we);
